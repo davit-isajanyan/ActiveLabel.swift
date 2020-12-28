@@ -11,7 +11,7 @@ import ActiveLabel
 
 class ViewController: UIViewController {
     
-    let label = ActiveLabel()
+    @IBOutlet weak var label: ActiveLabel!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -66,8 +66,8 @@ class ViewController: UIViewController {
             label.handleCustomTap(for: customType3) { self.alert("Custom type", message: $0) }
         }
 
-        label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
-        view.addSubview(label)
+//        label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
+//        view.addSubview(label)
         
         
         // Do any additional setup after loading the view, typically from a nib.
