@@ -14,6 +14,7 @@ enum ActiveElement {
     case email(String)
     case url(original: String, trimmed: String)
     case custom(String)
+    case background
     
     static func create(with activeType: ActiveType, text: String) -> ActiveElement {
         switch activeType {
@@ -22,6 +23,7 @@ enum ActiveElement {
         case .email: return email(text)
         case .url: return url(original: text, trimmed: text)
         case .custom: return custom(text)
+        case .background: return background
         }
     }
 }
@@ -31,6 +33,7 @@ public enum ActiveType {
     case hashtag
     case url
     case email
+    case background
     case custom(pattern: String)
     
     var pattern: String {
@@ -40,6 +43,7 @@ public enum ActiveType {
         case .url: return RegexParser.urlPattern
         case .email: return RegexParser.emailPattern
         case .custom(let regex): return regex
+        case .background: return ""
         }
     }
 }
@@ -52,6 +56,7 @@ extension ActiveType: Hashable, Equatable {
         case .url: hasher.combine(-3)
         case .email: hasher.combine(-4)
         case .custom(let regex): hasher.combine(regex)
+        case .background: hasher.combine(-999)
         }
     }
 }

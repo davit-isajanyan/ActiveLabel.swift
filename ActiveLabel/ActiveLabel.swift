@@ -25,6 +25,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     
     open var urlMaximumLength: Int?
     
+    open var canUpdateOnSelection: Bool = true
+    
     open var configureLinkAttribute: ConfigureLinkAttribute?
     
     @IBInspectable open var mentionColor: UIColor = .blue {
@@ -71,6 +73,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     // MARK: - public methods
+    open func handleBackgroundTap(_ handler: @escaping () -> ()) {
+        backgroundTapHandler = handler
+    }
+    
     open func handleMentionTap(_ handler: @escaping (String) -> ()) {
         mentionTapHandler = handler
     }
@@ -103,6 +109,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             customTapHandlers[type] = nil
         case .email:
             emailTapHandler = nil
+        case .background:
+            backgroundTapHandler = nil
         }
     }
     
@@ -215,7 +223,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
                 selectedElement = nil
             }
         case .ended, .regionExited:
-            guard let selectedElement = selectedElement else { return avoidSuperCall }
+            guard let selectedElement = selectedElement else {
+                didTapBackground()
+                return avoidSuperCall
+            }
             
             switch selectedElement.element {
             case .mention(let userHandle): didTapMention(userHandle)
@@ -223,6 +234,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .url(let originalURL, _): didTapStringURL(originalURL)
             case .custom(let element): didTap(element, for: selectedElement.type)
             case .email(let element): didTapStringEmail(element)
+            case .background: didTapBackground()
             }
             
             let when = DispatchTime.now() + Double(Int64(0.25 * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC)
@@ -247,6 +259,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     fileprivate var _customizing: Bool = true
     fileprivate var defaultCustomColor: UIColor = .black
     
+    
+    internal var backgroundTapHandler: (() -> ())?
     internal var mentionTapHandler: ((String) -> ())?
     internal var hashtagTapHandler: ((String) -> ())?
     internal var urlTapHandler: ((URL) -> ())?
@@ -333,6 +347,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .url: attributes[NSAttributedString.Key.foregroundColor] = URLColor
             case .custom: attributes[NSAttributedString.Key.foregroundColor] = customColor[type] ?? defaultCustomColor
             case .email: attributes[NSAttributedString.Key.foregroundColor] = URLColor
+            case .background: attributes[NSAttributedString.Key.foregroundColor] = textColor
             }
             
             if let highlightFont = hightlightFont {
@@ -399,7 +414,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     fileprivate func updateAttributesWhenSelected(_ isSelected: Bool) {
-        guard let selectedElement = selectedElement else {
+        guard let selectedElement = selectedElement, canUpdateOnSelection else {
             return
         }
         
@@ -416,6 +431,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
                 let possibleSelectedColor = customSelectedColor[selectedElement.type] ?? customColor[selectedElement.type]
                 selectedColor = possibleSelectedColor ?? defaultCustomColor
             case .email: selectedColor = URLSelectedColor ?? URLColor
+            case .background: selectedColor = textColor
             }
             attributes[NSAttributedString.Key.foregroundColor] = selectedColor
         } else {
@@ -426,6 +442,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .url: unselectedColor = URLColor
             case .custom: unselectedColor = customColor[selectedElement.type] ?? defaultCustomColor
             case .email: unselectedColor = URLColor
+            case .background: unselectedColor = textColor
             }
             attributes[NSAttributedString.Key.foregroundColor] = unselectedColor
         }
@@ -493,6 +510,15 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     //MARK: - ActiveLabel handler
+    fileprivate func didTapBackground() {
+        guard let backgroundTapHandler = backgroundTapHandler else {
+            delegate?.didSelect("", type: .background)
+            return
+        }
+        backgroundTapHandler()
+    }
+    
+    
     fileprivate func didTapMention(_ username: String) {
         guard let mentionHandler = mentionTapHandler else {
             delegate?.didSelect(username, type: .mention)
