@@ -12,65 +12,74 @@ import ActiveLabel
 class ViewController: UIViewController {
     
     @IBOutlet weak var label: ActiveLabel!
+    
+    let text = "This is a post with #multiple #hashtags and a @userhandle. Links are also supported like" +
+    " this one: http://optonaut.co. Now it also supports custom patterns -> are\n\n" +
+        "Let's trim a long link: \nhttps://twitter.com/twicket_app/status/649678392372121601"
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        let customType = ActiveType.custom(pattern: "\\sare\\b") //Looks for "are"
-        let customType2 = ActiveType.custom(pattern: "\\sit\\b") //Looks for "it"
-        let customType3 = ActiveType.custom(pattern: "\\ssupports\\b") //Looks for "supports"
-
-        label.enabledTypes.append(customType)
-        label.enabledTypes.append(customType2)
-        label.enabledTypes.append(customType3)
-
-        label.urlMaximumLength = 31
-
+        label.textColor = UIColor.red
+        label.canUpdateOnSelection = false
+        label.enabledTypes = []
+        
+        let customTypes = ["#multiple", "@userhandle"].map { identifier in
+            return ActiveType.range(identifier: identifier)
+        }
+        
+        
+        let nsString = text as NSString
+        
+        for type in customTypes {
+            switch type {
+            case .range(let identifier):
+                let range = nsString.range(of: identifier)
+                label.addCustomRange(range, for: type)
+            default:
+                break
+            }
+        }
         label.customize { label in
-            label.text = "This is a post with #multiple #hashtags and a @userhandle. Links are also supported like" +
-            " this one: http://optonaut.co. Now it also supports custom patterns -> are\n\n" +
-                "Let's trim a long link: \nhttps://twitter.com/twicket_app/status/649678392372121601"
+            label.text = self.text
             label.numberOfLines = 0
             label.lineSpacing = 4
             
-            label.textColor = UIColor(red: 102.0/255, green: 117.0/255, blue: 127.0/255, alpha: 1)
-            label.hashtagColor = UIColor(red: 85.0/255, green: 172.0/255, blue: 238.0/255, alpha: 1)
-            label.mentionColor = UIColor(red: 238.0/255, green: 85.0/255, blue: 96.0/255, alpha: 1)
-            label.URLColor = UIColor(red: 85.0/255, green: 238.0/255, blue: 151.0/255, alpha: 1)
-            label.URLSelectedColor = UIColor(red: 82.0/255, green: 190.0/255, blue: 41.0/255, alpha: 1)
+            label.textColor = .red
+//            label.hashtagColor = UIColor(red: 85.0/255, green: 172.0/255, blue: 238.0/255, alpha: 1)
+//            label.mentionColor = UIColor(red: 238.0/255, green: 85.0/255, blue: 96.0/255, alpha: 1)
+//            label.URLColor = UIColor(red: 85.0/255, green: 238.0/255, blue: 151.0/255, alpha: 1)
+//            label.URLSelectedColor = UIColor(red: 82.0/255, green: 190.0/255, blue: 41.0/255, alpha: 1)
 
-            label.handleMentionTap { self.alert("Mention", message: $0) }
-            label.handleHashtagTap { self.alert("Hashtag", message: $0) }
-            label.handleURLTap { self.alert("URL", message: $0.absoluteString) }
+//            label.handleMentionTap { self.alert("Mention", message: $0) }
+//            label.handleHashtagTap { self.alert("Hashtag", message: $0) }
+//            label.handleURLTap { self.alert("URL", message: $0.absoluteString) }
 
             //Custom types
-
-            label.customColor[customType] = UIColor.purple
-            label.customSelectedColor[customType] = UIColor.green
-            label.customColor[customType2] = UIColor.magenta
-            label.customSelectedColor[customType2] = UIColor.green
+//            label.customColor[type] = UIColor.red
+//            label.customSelectedColor[type] = UIColor.red
+//            label.customColor[customType2] = UIColor.magenta
+//            label.customSelectedColor[customType2] = UIColor.green
             
             label.configureLinkAttribute = { (type, attributes, isSelected) in
                 var atts = attributes
                 switch type {
-                case customType3:
+                case .range:
                     atts[NSAttributedString.Key.font] = isSelected ? UIFont.boldSystemFont(ofSize: 16) : UIFont.boldSystemFont(ofSize: 14)
+
+//                case customType3:
+//                    atts[NSAttributedString.Key.font] = isSelected ? UIFont.boldSystemFont(ofSize: 16) : UIFont.boldSystemFont(ofSize: 14)
                 default: ()
                 }
                 
                 return atts
             }
-
-            label.handleCustomTap(for: customType) { self.alert("Custom type", message: $0) }
-            label.handleCustomTap(for: customType2) { self.alert("Custom type", message: $0) }
-            label.handleCustomTap(for: customType3) { self.alert("Custom type", message: $0) }
+            
+            for type in customTypes {
+                label.customColor[type] = UIColor.blue
+                label.customSelectedColor[type] = UIColor.blue
+                label.handleCustomTap(for: type) { self.alert("Custom type", message: $0) }
+            }
         }
-
-//        label.frame = CGRect(x: 20, y: 40, width: view.frame.width - 40, height: 300)
-//        view.addSubview(label)
-        
-        
-        // Do any additional setup after loading the view, typically from a nib.
     }
 
     override func didReceiveMemoryWarning() {

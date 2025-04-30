@@ -22,7 +22,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     open weak var delegate: ActiveLabelDelegate?
     
     open var enabledTypes: [ActiveType] = [.mention, .hashtag, .url]
-    
+    private var customRanges: [ActiveType: [NSRange]] = [:]
+
     open var urlMaximumLength: Int?
     
     open var canUpdateOnSelection: Bool = true
@@ -111,6 +112,8 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             emailTapHandler = nil
         case .background:
             backgroundTapHandler = nil
+        case .range(identifier: let identifier):
+            break
         }
     }
     
@@ -182,6 +185,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     }
     
     
+    
     // MARK: - customzation
     @discardableResult
     open func customize(_ block: (_ label: ActiveLabel) -> ()) -> ActiveLabel {
@@ -233,6 +237,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .hashtag(let hashtag): didTapHashtag(hashtag)
             case .url(let originalURL, _): didTapStringURL(originalURL)
             case .custom(let element): didTap(element, for: selectedElement.type)
+            case .range(let identifier): didTap(identifier, for: selectedElement.type)
             case .email(let element): didTapStringEmail(element)
             case .background: didTapBackground()
             }
@@ -279,6 +284,15 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     
     // MARK: - helper functions
     
+    open func addCustomRange(_ range: NSRange, for type: ActiveType) {
+        if customRanges[type] != nil {
+            customRanges[type]?.append(range)
+        } else {
+            customRanges[type] = [range]
+        }
+        enabledTypes.append(type)
+    }
+    
     fileprivate func setupLabel() {
         textStorage.addLayoutManager(layoutManager)
         layoutManager.addTextContainer(textContainer)
@@ -316,6 +330,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     
     fileprivate func clearActiveElements() {
         selectedElement = nil
+        
         for (type, _) in activeElements {
             activeElements[type]?.removeAll()
         }
@@ -345,7 +360,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .mention: attributes[NSAttributedString.Key.foregroundColor] = mentionColor
             case .hashtag: attributes[NSAttributedString.Key.foregroundColor] = hashtagColor
             case .url: attributes[NSAttributedString.Key.foregroundColor] = URLColor
-            case .custom: attributes[NSAttributedString.Key.foregroundColor] = customColor[type] ?? defaultCustomColor
+            case .custom, .range: attributes[NSAttributedString.Key.foregroundColor] = customColor[type] ?? defaultCustomColor
             case .email: attributes[NSAttributedString.Key.foregroundColor] = URLColor
             case .background: attributes[NSAttributedString.Key.foregroundColor] = textColor
             }
@@ -382,13 +397,32 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
         
         for type in enabledTypes where type != .url {
             var filter: ((String) -> Bool)? = nil
-            if type == .mention {
+            var canAddElements: Bool = true
+            switch type {
+            case .mention:
                 filter = mentionFilterPredicate
-            } else if type == .hashtag {
+            case .hashtag:
                 filter = hashtagFilterPredicate
+            case .range:
+                canAddElements = false
+                if let manualRanges = customRanges[type] {
+                    var elements = [ElementTuple]()
+                    for range in manualRanges where NSLocationInRange(range.location, textRange) {
+                        let matchedText = (textString as NSString).substring(with: range)
+                        let element = ActiveElement.create(with: type, text: matchedText)
+                        elements.append((range, element, type))
+                    }
+                    if elements.count > 0 {
+                        activeElements[type] = elements
+                    }
+                }
+            default:
+                break
             }
-            let hashtagElements = ActiveBuilder.createElements(type: type, from: textString, range: textRange, filterPredicate: filter)
-            activeElements[type] = hashtagElements
+            if canAddElements {
+                let hashtagElements = ActiveBuilder.createElements(type: type, from: textString, range: textRange, filterPredicate: filter)
+                activeElements[type] = hashtagElements
+            }
         }
         
         return textString
@@ -427,7 +461,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .mention: selectedColor = mentionSelectedColor ?? mentionColor
             case .hashtag: selectedColor = hashtagSelectedColor ?? hashtagColor
             case .url: selectedColor = URLSelectedColor ?? URLColor
-            case .custom:
+            case .custom, .range:
                 let possibleSelectedColor = customSelectedColor[selectedElement.type] ?? customColor[selectedElement.type]
                 selectedColor = possibleSelectedColor ?? defaultCustomColor
             case .email: selectedColor = URLSelectedColor ?? URLColor
@@ -440,7 +474,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
             case .mention: unselectedColor = mentionColor
             case .hashtag: unselectedColor = hashtagColor
             case .url: unselectedColor = URLColor
-            case .custom: unselectedColor = customColor[selectedElement.type] ?? defaultCustomColor
+            case .custom, .range: unselectedColor = customColor[selectedElement.type] ?? defaultCustomColor
             case .email: unselectedColor = URLColor
             case .background: unselectedColor = textColor
             }
