@@ -22,7 +22,7 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     open weak var delegate: ActiveLabelDelegate?
     
     open var enabledTypes: [ActiveType] = [.mention, .hashtag, .url]
-    private var customRanges: [ActiveType: [NSRange]] = [:]
+    open var customRanges: [ActiveType: [NSRange]] = [:]
 
     open var urlMaximumLength: Int?
     
@@ -283,6 +283,10 @@ typealias ElementTuple = (range: NSRange, element: ActiveElement, type: ActiveTy
     lazy var activeElements = [ActiveType: [ElementTuple]]()
     
     // MARK: - helper functions
+    
+    open func setDefaultCustomColor(_ color: UIColor) {
+        defaultCustomColor = color
+    }
     
     open func addCustomRange(_ range: NSRange, for type: ActiveType) {
         if customRanges[type] != nil {
